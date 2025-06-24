@@ -257,13 +257,13 @@ function addTimestamp(url) {
 
 // Lista de arquivos para download (URLs CORRIGIDAS)
 const files = [
-    { url: addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/main.js'), dest: path.join(__dirname, 'main.js'), critical: true },
-    { url: addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/preload.js'), dest: path.join(__dirname, 'preload.js'), critical: true },
-    { url: addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/preload-secure.js'), dest: path.join(__dirname, 'preload-secure.js'), critical: true }
+    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/main.js'), dest: path.join(__dirname, 'main.js'), critical: true },
+    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload.js'), dest: path.join(__dirname, 'preload.js'), critical: true },
+    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload-secure.js'), dest: path.join(__dirname, 'preload-secure.js'), critical: true }
 ];
 
 // URL alternativa para main.js (backup) - (URL CORRIGIDA)
-const backupMainJsUrl = 'https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/main.js';
+const backupMainJsUrl = 'https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/main.js';
 
 // Função para criar cópia de segurança do main.js antes de excluí-lo
 function backupMainJs() {
