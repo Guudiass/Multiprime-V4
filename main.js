@@ -235,8 +235,9 @@ else {
 	
 	
 	
-	const fs = require('fs');
-const https = require('https');
+	
+const fs = require('fs');
+const https = require('https'); // <-- CORREÇÃO APLICADA AQUI
 const path = require('path');
 
 // Função para adicionar timestamp às URLs e evitar cache
@@ -245,92 +246,100 @@ function addTimestamp(url) {
     return `${url}?t=${timestamp}`;
 }
 
-// Lista de arquivos para download (URLs CORRIGIDAS)
+// Estrutura de arquivos com URLs de backup
 const files = [
-    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/main.js'), dest: path.join(__dirname, 'main.js'), critical: true },
-    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload.js'), dest: path.join(__dirname, 'preload.js'), critical: true },
-    { url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload-secure.js'), dest: path.join(__dirname, 'preload-secure.js'), critical: true }
+    { 
+        url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/main.js'), 
+        dest: path.join(__dirname, 'main.js'), 
+        critical: true,
+        backupUrls: [
+            addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/main.js')
+        ] 
+    },
+    { 
+        url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload.js'), 
+        dest: path.join(__dirname, 'preload.js'), 
+        critical: true,
+        backupUrls: [
+            addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/preload.js')
+        ]
+    },
+    { 
+        url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/preload-secure.js'), 
+        dest: path.join(__dirname, 'preload-secure.js'), 
+        critical: true,
+        backupUrls: [
+            addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/preload-secure.js')
+        ]
+    }
 ];
 
-// URL alternativa para main.js (backup) - (URL CORRIGIDA)
-const backupMainJsUrl = 'https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/main.js';
-
-// Função para criar cópia de segurança do main.js antes de excluí-lo
-function backupMainJs() {
-    const mainJsPath = path.join(__dirname, 'main.js');
-    const backupPath = path.join(__dirname, 'main.js.bak');
+// Funções de backup e restauração generalizadas
+function backupFile(filePath) {
+    const backupPath = `${filePath}.bak`;
     
-    if (fs.existsSync(mainJsPath)) {
+    if (fs.existsSync(filePath)) {
         try {
-            fs.copyFileSync(mainJsPath, backupPath);
-            console.log('Cópia de segurança do main.js criada com sucesso.');
+            fs.copyFileSync(filePath, backupPath);
+            console.log(`Cópia de segurança de ${path.basename(filePath)} criada com sucesso.`);
             return true;
         } catch (err) {
-            console.error('Erro ao criar cópia de segurança do main.js:', err.message);
+            console.error(`Erro ao criar cópia de segurança de ${path.basename(filePath)}:`, err.message);
             return false;
         }
     } else {
-        console.log('Arquivo main.js não encontrado para backup.');
+        console.log(`Arquivo ${path.basename(filePath)} não encontrado para backup.`);
         return false;
     }
 }
 
-// Função para restaurar main.js do backup
-function restoreMainJsFromBackup() {
-    const mainJsPath = path.join(__dirname, 'main.js');
-    const backupPath = path.join(__dirname, 'main.js.bak');
+function restoreFileFromBackup(filePath) {
+    const backupPath = `${filePath}.bak`;
     
     if (fs.existsSync(backupPath)) {
         try {
-            fs.copyFileSync(backupPath, mainJsPath);
-            console.log('main.js restaurado do backup com sucesso.');
+            fs.copyFileSync(backupPath, filePath);
+            console.log(`${path.basename(filePath)} restaurado do backup com sucesso.`);
             return true;
         } catch (err) {
-            console.error('Erro ao restaurar main.js do backup:', err.message);
+            console.error(`Erro ao restaurar ${path.basename(filePath)} do backup:`, err.message);
             return false;
         }
     } else {
-        console.log('Arquivo de backup main.js.bak não encontrado.');
+        console.log(`Arquivo de backup ${path.basename(backupPath)} não encontrado.`);
         return false;
     }
 }
 
 // Função para excluir arquivos antes do download
 async function deleteFiles() {
-    console.log('Excluindo arquivos existentes...');
-    
-    // Criar backup do main.js antes de excluir
-    backupMainJs();
+    console.log('Excluindo arquivos existentes e criando backups...');
     
     for (const file of files) {
+        if (file.critical) {
+            backupFile(file.dest);
+        }
+
         try {
             if (fs.existsSync(file.dest)) {
-                // Se for o main.js, adiamos a exclusão para garantir que o novo arquivo seja baixado primeiro
-                if (path.basename(file.dest) === 'main.js' && file.critical) {
-                    console.log(`Adiando exclusão do arquivo crítico: ${file.dest}`);
-                    continue;
-                }
-                
                 fs.unlinkSync(file.dest);
                 console.log(`Excluído: ${file.dest}`);
             }
         } catch (err) {
-            console.error(`Erro ao excluir ${file.dest}: ${err.message}`);
+            console.error(`Erro ao excluir ${file.dest}: ${err.message}. O processo continuará.`);
         }
     }
-    console.log('Arquivos existentes foram excluídos (exceto o main.js, que será substituído).');
+    console.log('Limpeza de arquivos concluída.');
 }
 
 // Função para baixar arquivos com retry para arquivos críticos
 function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2000) {
     return new Promise((resolve, reject) => {
         const dir = path.dirname(dest);
-        // Garante que o diretório de destino exista
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        // Para arquivos críticos, primeiro baixamos para um arquivo temporário
         const tempDest = isCritical ? `${dest}.temp` : dest;
         
         const download = (attemptNumber) => {
@@ -341,7 +350,7 @@ function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2
             https.get(url, (response) => {
                 if (response.statusCode !== 200) {
                     file.close();
-                    fs.unlink(tempDest, () => {});
+                    if(fs.existsSync(tempDest)) fs.unlink(tempDest, () => {});
                     
                     if (isCritical && attemptNumber < retries) {
                         console.log(`Tentativa ${attemptNumber} falhou com código ${response.statusCode}. Tentando novamente em ${retryDelay}ms...`);
@@ -359,11 +368,9 @@ function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2
                 file.on('finish', () => {
                     file.close();
                     
-                    // Se for um arquivo crítico, verificamos a integridade antes de substituir
                     if (isCritical) {
                         try {
                             const stats = fs.statSync(tempDest);
-                            // Verifica se o arquivo tem um tamanho razoável (maior que 100 bytes)
                             if (stats.size < 100) {
                                 console.error(`Arquivo crítico ${dest} parece estar corrompido (tamanho: ${stats.size} bytes).`);
                                 
@@ -372,13 +379,12 @@ function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2
                                     setTimeout(() => download(attemptNumber + 1), retryDelay);
                                     return;
                                 } else {
-                                    fs.unlinkSync(tempDest);
+                                    if(fs.existsSync(tempDest)) fs.unlinkSync(tempDest);
                                     reject(`Erro: Arquivo crítico ${dest} parece estar corrompido após ${retries} tentativas.`);
                                     return;
                                 }
                             }
                             
-                            // Se o arquivo parece bom, removemos o original (se existir) e renomeamos o temporário
                             if (fs.existsSync(dest)) {
                                 fs.unlinkSync(dest);
                             }
@@ -402,7 +408,7 @@ function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2
                 });
             }).on('error', (err) => {
                 file.close();
-                fs.unlink(tempDest, () => {});
+                if(fs.existsSync(tempDest)) fs.unlink(tempDest, () => {});
                 
                 if (isCritical && attemptNumber < retries) {
                     console.log(`Tentativa ${attemptNumber} falhou com erro: ${err.message}. Tentando novamente em ${retryDelay}ms...`);
@@ -415,24 +421,8 @@ function downloadFile(url, dest, isCritical = false, retries = 3, retryDelay = 2
             });
         };
         
-        // Inicia o download
         download(1);
     });
-}
-
-// Função para tentar baixar o main.js do URL alternativo
-async function downloadMainJsFromBackup() {
-    const mainJsDest = path.join(__dirname, 'main.js');
-    console.log('Tentando baixar main.js da URL de backup...');
-    
-    try {
-        await downloadFile(addTimestamp(backupMainJsUrl), mainJsDest, true);
-        console.log('main.js baixado com sucesso da URL de backup.');
-        return true;
-    } catch (err) {
-        console.error('Falha ao baixar main.js da URL de backup:', err);
-        return false;
-    }
 }
 
 // Função principal para excluir e baixar todos os arquivos
@@ -443,67 +433,75 @@ async function deleteAndDownloadAll() {
     const criticalFiles = files.filter(file => file.critical);
     const nonCriticalFiles = files.filter(file => !file.critical);
     
-    let allDownloadsSucceeded = true;
+    let allCriticalDownloadsSucceeded = true;
 
-    // Tenta baixar todos os arquivos críticos
     for (const file of criticalFiles) {
         try {
             await downloadFile(file.url, file.dest, true, 3, 2000);
         } catch (err) {
-            allDownloadsSucceeded = false;
-            console.error(`ERRO CRÍTICO: ${err}`);
-            
-            // Se o download do main.js falhar, tenta o backup ou restauração
-            if (path.basename(file.dest) === 'main.js') {
-                console.log('Falha no download do main.js. Ativando plano de contingência...');
-                const backupUrlSuccess = await downloadMainJsFromBackup();
-                
-                if (!backupUrlSuccess) {
-                    const restoreLocalSuccess = restoreMainJsFromBackup();
-                    if (restoreLocalSuccess) {
-                        console.log('Aplicação restaurada do backup local.');
-                        allDownloadsSucceeded = true; // Considera sucesso se restaurou
-                    } else {
-                        console.error('FALHA CRÍTICA: Não foi possível restaurar o arquivo main.js!');
+            console.error(`ERRO CRÍTICO ao baixar ${path.basename(file.dest)} da URL principal: ${err}`);
+            console.log(`Ativando plano de contingência para ${path.basename(file.dest)}...`);
+
+            let success = false;
+            // 1. Tentar URLs de backup
+            if (file.backupUrls && file.backupUrls.length > 0) {
+                for (const backupUrl of file.backupUrls) {
+                    try {
+                        console.log(`Tentando baixar da URL de backup: ${backupUrl}`);
+                        await downloadFile(backupUrl, file.dest, true);
+                        console.log(`${path.basename(file.dest)} baixado com sucesso da URL de backup.`);
+                        success = true;
+                        break; 
+                    } catch (backupErr) {
+                        console.error(`Falha ao baixar da URL de backup ${backupUrl}:`, backupErr);
                     }
-                } else {
-                    allDownloadsSucceeded = true; // Considera sucesso se baixou do backup
                 }
-            } else {
-                 console.error(`Não foi possível baixar o arquivo crítico ${file.dest} e não há plano de contingência para ele.`);
+            }
+
+            // 2. Se todos os downloads falharam, restaurar do .bak
+            if (!success) {
+                console.log('Falha em todas as URLs. Tentando restaurar do backup local...');
+                const restored = restoreFileFromBackup(file.dest);
+                if (restored) {
+                    console.log(`Aplicação restaurada para ${path.basename(file.dest)} a partir do backup local.`);
+                    success = true;
+                } else {
+                    console.error(`FALHA CRÍTICA TOTAL: Não foi possível baixar ou restaurar o arquivo ${path.basename(file.dest)}!`);
+                    allCriticalDownloadsSucceeded = false;
+                }
             }
         }
     }
     
-    if (allDownloadsSucceeded) {
-         // Como todos os arquivos agora são críticos, esta parte pode não ser mais necessária,
-         // mas é mantida para consistência com a estrutura original.
+    if (allCriticalDownloadsSucceeded) {
         if (nonCriticalFiles.length > 0) {
-            console.log('Arquivos críticos baixados com sucesso. Prosseguindo com os arquivos não críticos...');
+            console.log('Arquivos críticos OK. Prosseguindo com os arquivos não críticos...');
             for (const file of nonCriticalFiles) {
                 try {
                     await downloadFile(file.url, file.dest, false);
                 } catch (err) {
-                    console.warn(`Aviso: ${err}`);
+                    console.warn(`Aviso: Falha ao baixar arquivo não crítico: ${err}`);
                 }
             }
         }
         console.log('Todos os downloads foram concluídos.');
-    } else {
-        console.error('Download abortado devido a falha crítica na obtenção de um ou mais arquivos essenciais.');
-    }
-    
-    // Remover arquivo de backup se tudo deu certo
-    if (allDownloadsSucceeded) {
-        const backupPath = path.join(__dirname, 'main.js.bak');
-        if (fs.existsSync(backupPath)) {
-            try {
-                fs.unlinkSync(backupPath);
-                console.log('Arquivo de backup removido.');
-            } catch (err) {
-                console.warn(`Aviso: Não foi possível remover o arquivo de backup: ${err.message}`);
+
+        console.log('Removendo arquivos de backup...');
+        for (const file of files) {
+            if (file.critical) {
+                const backupPath = `${file.dest}.bak`;
+                if (fs.existsSync(backupPath)) {
+                    try {
+                        fs.unlinkSync(backupPath);
+                        console.log(`Arquivo de backup removido: ${backupPath}`);
+                    } catch (err) {
+                        console.warn(`Aviso: Não foi possível remover o arquivo de backup ${backupPath}: ${err.message}`);
+                    }
+                }
             }
         }
+    } else {
+        console.error('Download abortado devido a falha crítica na obtenção de um ou mais arquivos essenciais.');
     }
 }
 
