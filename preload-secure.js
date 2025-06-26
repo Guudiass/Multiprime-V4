@@ -344,7 +344,7 @@ function createCustomTitleBar() {
 
     leftControls.append(backButton, forwardButton, reloadButton);
     urlContainer.append(statusIndicator, urlDisplay);
-    rightControls.append(downloadsButton, maximizeButton, closeButton);
+    rightControls.append(downloadsButton, minimizeButton, maximizeButton, closeButton);
     titleBar.append(leftControls, urlContainer, rightControls);
     document.body.append(titleBar, downloadsPanel);
 
