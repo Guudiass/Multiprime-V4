@@ -12025,7 +12025,7 @@ app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 
 const CONFIG = {
     WINDOW_DEFAULTS: { width: 1280, height: 720, minWidth: 800, minHeight: 600 },
-    COOKIE_TIMEOUT: 30_000,
+    COOKIE_TIMEOUT: 90_000,
     SESSION_CLEANUP_DELAY: 1_000
 };
 
