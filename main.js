@@ -12282,7 +12282,10 @@ ipcMain.on('initiate-full-session-export', async (event, storageData) => {
                 await client.access({
                     host: ftpUrl.hostname,
                     user: decodeURIComponent(ftpUrl.username),
-                    password: decodeURIComponent(ftpUrl.password)
+                    password: decodeURIComponent(ftpUrl.password),
+					secure: false,
+					passive: true,
+					forceIPv4: true
                 });
 
                 const dataBuffer = Buffer.from(jsonContent, 'utf-8');
