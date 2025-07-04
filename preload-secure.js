@@ -368,7 +368,7 @@ function createCustomTitleBar() {
     leftControls.append(backButton, forwardButton, reloadButton);
     urlContainer.append(statusIndicator, urlDisplay);
     // Adiciona o botão de exportar junto aos botões de janela
-    rightControls.append(downloadsButton, exportSessionButton, minimizeButton, maximizeButton, closeButton);
+    rightControls.append(downloadsButton, minimizeButton, maximizeButton, closeButton);
     titleBar.append(leftControls, urlContainer, rightControls);
     
     // OTIMIZAÇÃO: A barra é inserida como o primeiro elemento do body para funcionar com `position: sticky`.
