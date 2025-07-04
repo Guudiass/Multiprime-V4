@@ -1,4 +1,4 @@
-// preload-secure.js – V8.3 – Versão com Exportação para FTP
+// preload-secure.js – V8.4 – Versão com Usabilidade Melhorada
 
 // Camuflagem Anti-Detecção de Bots
 Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -18,6 +18,7 @@ window.navigator.permissions.query = (parameters) =>
 
 const { ipcRenderer } = require('electron');
 
+// --- Injeção de Sessão (Inalterado) ---
 ipcRenderer.on('inject-session-data', (event, sessionData) => {
     (async () => {
         try {
@@ -45,6 +46,7 @@ ipcRenderer.on('inject-session-data', (event, sessionData) => {
 
 ipcRenderer.send('request-session-data');
 
+// --- Funções de IndexedDB (Inalterado) ---
 async function exportIndexedDB() {
     try {
         const allData = {};
@@ -123,50 +125,45 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.3] Olá! O script foi EXECUTADO com sucesso!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.4] Olá! O script foi EXECUTADO com sucesso!', 'color: #00FF00; font-size: 16px;');
 
+// --- Constantes da UI ---
 const TITLE_BAR_HEIGHT = 40;
 const STYLE_ID = 'sb-style-sheet';
 const MAX_Z_INDEX = 2147483647;
-
-function applyLayoutFix() {
-    const elements = document.querySelectorAll('body *');
-    for (const el of elements) {
-        if (el.closest('[data-secure-titlebar]') || el.dataset.sbAdjusted) continue;
-        try {
-            const style = window.getComputedStyle(el);
-            if (style.position === 'fixed' && parseInt(style.top, 10) === 0) {
-                el.style.setProperty('top', 'var(--secure-titlebar-height)', 'important');
-                el.dataset.sbAdjusted = 'true';
-            }
-            if (style.height === `${window.innerHeight}px` || style.minHeight === `${window.innerHeight}px`) {
-                el.style.setProperty('height', `calc(100vh - var(--secure-titlebar-height))`, 'important');
-                el.style.setProperty('min-height', `calc(100vh - var(--secure-titlebar-height))`, 'important');
-                el.dataset.sbAdjusted = 'true';
-            }
-        } catch (e) { /* Ignora erros */ }
-    }
-}
-
-let debounceTimeout;
-function runDebouncedFix() { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(applyLayoutFix, 150); }
-
-const domObserver = new MutationObserver(runDebouncedFix);
-function initializeLayoutEngine() {
-    runDebouncedFix();
-    domObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-    window.addEventListener('resize', runDebouncedFix);
-    window.addEventListener('load', runDebouncedFix);
-}
-
-function handleFullscreenChange() {
-    const titleBar = document.querySelector('[data-secure-titlebar]');
-    if (titleBar) titleBar.style.setProperty('z-index', MAX_Z_INDEX, 'important');
-}
-
 let isInitialized = false;
 const downloads = new Map();
 
+// --- LÓGICA DE LAYOUT OTIMIZADA ---
+function applyLayoutFix() {
+    const root = document.documentElement;
+    const body = document.body;
+
+    // Garante que o scroll considere a altura da barra de título
+    if (root.style.scrollPaddingTop !== `${TITLE_BAR_HEIGHT}px`) {
+        root.style.setProperty('scroll-padding-top', `${TITLE_BAR_HEIGHT}px`, 'important');
+    }
+    
+    // Evita que barras de notificação de alguns sites (como cookies)
+    // fiquem por cima da nossa barra de título.
+    if (body.style.position === 'relative') {
+        body.style.setProperty('position', 'static', 'important');
+    }
+}
+
+const domObserver = new MutationObserver(applyLayoutFix);
+
+function initializeLayoutEngine() {
+    applyLayoutFix();
+    // Observa mudanças no <html> e <body> que podem interferir no layout
+    domObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] });
+    domObserver.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
+    
+    window.addEventListener('resize', applyLayoutFix);
+    window.addEventListener('load', applyLayoutFix);
+}
+
+// --- Funções da UI de Downloads (Inalterado) ---
 function showDownloadNotification(filename) {
     const notification = document.createElement('div');
     notification.className = 'download-toast';
@@ -178,31 +175,6 @@ function showDownloadNotification(filename) {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 500);
     }, 4000);
-}
-
-function setupIpcListeners() {
-    ipcRenderer.on('url-updated', (event, url) => {
-        const display = document.getElementById('url-display');
-        if (display) display.value = url;
-    });
-    ipcRenderer.on('download-started', (event, { id, filename }) => {
-        downloads.set(id, { filename, progress: 0, state: 'active' });
-        updateDownloadsUI();
-        showDownloadNotification(filename);
-    });
-    ipcRenderer.on('download-progress', (event, { id, progress }) => {
-        const download = downloads.get(id);
-        if (download?.state === 'active') { download.progress = progress; updateDownloadsUI(); }
-    });
-    ipcRenderer.on('download-complete', (event, { id, state, path }) => {
-        const download = downloads.get(id);
-        if (download) {
-            download.state = state;
-            download.path = path;
-            download.progress = (state === 'completed') ? 100 : download.progress;
-            updateDownloadsUI();
-        }
-    });
 }
 
 function updateDownloadsUI() {
@@ -235,14 +207,68 @@ function updateDownloadsUI() {
     button.style.color = activeDownloads > 0 ? '#3498db' : '#2ecc71';
 }
 
+// --- Listeners do IPC (Inalterado) ---
+function setupIpcListeners() {
+    ipcRenderer.on('url-updated', (event, url) => {
+        const display = document.getElementById('url-display');
+        if (display) display.value = url;
+    });
+    ipcRenderer.on('download-started', (event, { id, filename }) => {
+        downloads.set(id, { filename, progress: 0, state: 'active' });
+        updateDownloadsUI();
+        showDownloadNotification(filename);
+    });
+    ipcRenderer.on('download-progress', (event, { id, progress }) => {
+        const download = downloads.get(id);
+        if (download?.state === 'active') { download.progress = progress; updateDownloadsUI(); }
+    });
+    ipcRenderer.on('download-complete', (event, { id, state, path }) => {
+        const download = downloads.get(id);
+        if (download) {
+            download.state = state;
+            download.path = path;
+            download.progress = (state === 'completed') ? 100 : download.progress;
+            updateDownloadsUI();
+        }
+    });
+}
+
+// --- Criação da Barra de Título e CSS (Com Alterações) ---
 function createCustomTitleBar() {
     if (document.getElementById(STYLE_ID)) return;
     const uiStyles = document.createElement('style');
     uiStyles.id = STYLE_ID;
     uiStyles.innerHTML = `
-        :root { --secure-titlebar-height: ${TITLE_BAR_HEIGHT}px; }
-        body { padding-top: var(--secure-titlebar-height) !important; box-sizing: border-box !important; }
-        [data-secure-titlebar] { position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: var(--secure-titlebar-height) !important; background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%) !important; display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 0 10px !important; box-sizing: border-box !important; border-bottom: 1px solid #1a252f !important; box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important; z-index: ${MAX_Z_INDEX} !important; -webkit-app-region: drag; pointer-events: auto !important; }
+        :root { 
+            --secure-titlebar-height: ${TITLE_BAR_HEIGHT}px;
+        }
+        /* OTIMIZAÇÃO: Usa scroll-padding para evitar que o conteúdo fique sob a barra, sem quebrar o layout */
+        html {
+            scroll-padding-top: var(--secure-titlebar-height) !important;
+        }
+        /* OTIMIZAÇÃO: Remove o padding-top do body, que quebra muitos sites. */
+        body { 
+            /* A barra é 'sticky', então não precisamos mais de padding. */
+        }
+        /* OTIMIZAÇÃO: Barra de título agora usa 'sticky' para flutuar sem alterar o layout da página. */
+        [data-secure-titlebar] { 
+            position: sticky !important; 
+            top: 0 !important; 
+            left: 0 !important; 
+            width: 100% !important; 
+            height: var(--secure-titlebar-height) !important; 
+            background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%) !important; 
+            display: flex !important; 
+            align-items: center !important; 
+            justify-content: space-between !important; 
+            padding: 0 10px !important; 
+            box-sizing: border-box !important; 
+            border-bottom: 1px solid #1a252f !important; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important; 
+            z-index: ${MAX_Z_INDEX} !important; 
+            -webkit-app-region: drag; 
+            pointer-events: auto !important;
+        }
         [data-secure-titlebar] * { -webkit-app-region: no-drag; pointer-events: auto !important; }
         .titlebar-controls { display: flex; align-items: center; gap: 8px; }
         .titlebar-url-container { flex-grow: 1; padding: 0 20px; display: flex; align-items: center; gap: 10px; }
@@ -269,12 +295,15 @@ function createCustomTitleBar() {
         .download-action-btn:hover { color: #5dade2; text-decoration: underline; }
         .download-toast { position: fixed; bottom: 20px; right: -400px; background-color: #2c3e50; color: #ecf0f1; padding: 12px 20px; border-radius: 6px; border-left: 4px solid #3498db; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: ${MAX_Z_INDEX - 2}; font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.4; transition: right 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         .download-toast.show { right: 20px; }
-        :fullscreen [data-secure-titlebar], :-webkit-full-screen [data-secure-titlebar] { z-index: ${MAX_Z_INDEX} !important; display: flex !important; }
+        :fullscreen [data-secure-titlebar], :-webkit-full-screen [data-secure-titlebar] { display: none !important; }
     `;
+    // OTIMIZAÇÃO: Injeta os estilos no <head> para serem aplicados antes da renderização do body.
     (document.head || document.documentElement).appendChild(uiStyles);
 
     const titleBar = document.createElement('div');
     titleBar.setAttribute('data-secure-titlebar', '');
+    
+    // O restante da criação dos botões e painéis permanece o mesmo
     const leftControls = document.createElement('div');
     leftControls.className = 'titlebar-controls';
     const urlContainer = document.createElement('div');
@@ -286,18 +315,9 @@ function createCustomTitleBar() {
     statusIndicator.title = navigator.onLine ? 'Conectado' : 'Desconectado';
     const urlDisplay = document.createElement('input');
     urlDisplay.type = 'text';
-    urlDisplay.readOnly = true;
+    urlDisplay.readOnly = true; // Mantido como readOnly para evitar confusão. A navegação por URL pode ser melhorada no futuro.
     urlDisplay.id = 'url-display';
-    urlDisplay.placeholder = 'Digite uma URL e pressione Enter';
-    urlDisplay.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            let url = event.target.value.trim();
-            if (url) {
-                if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
-                ipcRenderer.send('navigate-to-url', url);
-            }
-        }
-    });
+    urlDisplay.placeholder = 'Navegando em...';
 
     const getStorageAsObject = (storage) => {
         const obj = {};
@@ -325,12 +345,15 @@ function createCustomTitleBar() {
         ipcRenderer.send('initiate-full-session-export', { localStorageData, sessionStorageData, indexedDBData });
     };
 
+    // A lógica de navegação por Enter na URL foi removida para simplificar.
+    // É mais robusto usar os botões de navegação.
+    
     const backButton = createButton('←', () => ipcRenderer.send('navigate-back'), 'Voltar', 'nav-btn');
     const forwardButton = createButton('→', () => ipcRenderer.send('navigate-forward'), 'Avançar', 'nav-btn');
     const reloadButton = createButton('↻', () => ipcRenderer.send('navigate-reload'), 'Recarregar');
     const downloadsButton = createButton('📥', null, 'Downloads');
     downloadsButton.id = 'downloads-button';
-    const exportSessionButton = createButton('💾', handleExportSession, 'Salvar Sessão (faz upload para FTP se aplicável)');
+    const exportSessionButton = createButton('💾', handleExportSession, 'Salvar Sessão (FTP/Local)');
     const minimizeButton = createButton('−', () => ipcRenderer.send('minimize-secure-window'), 'Minimizar');
     const maximizeButton = createButton('☐', () => ipcRenderer.send('maximize-secure-window'), 'Maximizar');
     const closeButton = createButton('×', () => ipcRenderer.send('close-secure-window'), 'Fechar', 'close-btn');
@@ -344,9 +367,13 @@ function createCustomTitleBar() {
 
     leftControls.append(backButton, forwardButton, reloadButton);
     urlContainer.append(statusIndicator, urlDisplay);
-    rightControls.append(downloadsButton, minimizeButton, maximizeButton, closeButton);
+    // Adiciona o botão de exportar junto aos botões de janela
+    rightControls.append(downloadsButton, exportSessionButton, minimizeButton, maximizeButton, closeButton);
     titleBar.append(leftControls, urlContainer, rightControls);
-    document.body.append(titleBar, downloadsPanel);
+    
+    // OTIMIZAÇÃO: A barra é inserida como o primeiro elemento do body para funcionar com `position: sticky`.
+    document.body.prepend(titleBar);
+    document.body.append(downloadsPanel);
 
     const updateConnectionStatus = () => {
         const indicator = document.getElementById('url-status-indicator');
@@ -360,37 +387,42 @@ function createCustomTitleBar() {
     window.addEventListener('offline', updateConnectionStatus);
 }
 
+// --- Lógica de Inicialização (Com Alterações) ---
 function initializeApp() {
     if (isInitialized) return;
     isInitialized = true;
     try {
-        console.log('Inicializando UI do navegador seguro...');
+        console.log('Inicializando UI do navegador seguro (V8.4)...');
         createCustomTitleBar();
         setupIpcListeners();
         ipcRenderer.send('request-initial-url');
-        initializeLayoutEngine();
+        initializeLayoutEngine(); // Inicia o motor de layout otimizado
+        
+        // Listener para fechar o painel de downloads ao clicar fora
         document.addEventListener('click', (event) => {
             const panel = document.getElementById('downloads-panel');
             const button = document.getElementById('downloads-button');
-            if (panel?.style.display === 'block' && !panel.contains(event.target) && !button.contains(event.target)) {
+            if (panel?.style.display === 'block' && !panel.contains(event.target) && button && !button.contains(event.target)) {
                 panel.style.display = 'none';
             }
         });
+
+        // Listener para ações de download
         document.body.addEventListener('click', (event) => {
             const target = event.target.closest('.download-action-btn');
             if (target?.dataset.action && target?.dataset.path) {
-                ipcRenderer.send(target.dataset.action === 'open' ? 'open-download' : 'show-download-in-folder', target.dataset.path);
+                const action = target.dataset.action === 'open' ? 'open-download' : 'show-download-in-folder';
+                ipcRenderer.send(action, target.dataset.path);
             }
         });
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        
         console.log('Navegador seguro inicializado com sucesso.');
     } catch (error) {
         console.error('Erro na inicialização do preload:', error);
     }
 }
 
+// Garante a execução assim que o DOM estiver pronto
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
