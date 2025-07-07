@@ -12011,14 +12011,13 @@ module.exports = require("net");
 
 
 
-
 const { app, BrowserWindow, ipcMain, session, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const crypto = require('crypto');
-const ftp = require('basic-ftp');
-const { Writable, Readable } = require('stream'); // CORRIGIDO: Readable foi importado
+const https = require('https');
+const { Writable, Readable } = require('stream');
 
 // Anti-automation command
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
@@ -12027,6 +12026,22 @@ const CONFIG = {
     WINDOW_DEFAULTS: { width: 1280, height: 720, minWidth: 800, minHeight: 600 },
     COOKIE_TIMEOUT: 90_000,
     SESSION_CLEANUP_DELAY: 1_000
+};
+
+// Configuração do GitHub
+const GITHUB_CONFIG = {
+    owner: 'Guudiass',
+    repo: 'MULTIPRIMECOOKIES',
+    baseUrl: 'https://api.github.com'
+};
+
+// Configurações de criptografia
+const CRYPTO_CONFIG = {
+    algorithm: 'aes-256-gcm',
+    keyLength: 32,
+    ivLength: 16,
+    tagLength: 16,
+    salt: 'multiprime-cookies-salt-2025'
 };
 
 const proxyCredentials = new Map();
@@ -12039,6 +12054,262 @@ const nossoManipuladorDeLogin = (event, webContents, request, authInfo, callback
     const credentials = proxyCredentials.get(webContentsId);
     if (credentials) { callback(credentials.username, credentials.password); } else { callback(); }
 };
+
+// ===== FUNÇÕES DE CRIPTOGRAFIA =====
+
+function encryptData(data, password = 'MultiPrime-Default-Key-2025') {
+    try {
+        // Gerar chave a partir da senha
+        const key = crypto.scryptSync(password, CRYPTO_CONFIG.salt, CRYPTO_CONFIG.keyLength);
+        
+        // Gerar IV aleatório
+        const iv = crypto.randomBytes(CRYPTO_CONFIG.ivLength);
+        
+        // Criar cipher
+        const cipher = crypto.createCipher(CRYPTO_CONFIG.algorithm, key);
+        cipher.setAAD(Buffer.from('multiprime-session-data'));
+        
+        // Criptografar
+        let encrypted = cipher.update(data, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        
+        // Obter tag de autenticação
+        const authTag = cipher.getAuthTag();
+        
+        // Retornar dados criptografados em formato JSON
+        const encryptedPackage = {
+            encrypted: encrypted,
+            iv: iv.toString('hex'),
+            authTag: authTag.toString('hex'),
+            algorithm: CRYPTO_CONFIG.algorithm,
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        return JSON.stringify(encryptedPackage, null, 2);
+        
+    } catch (error) {
+        throw new Error(`Erro na criptografia: ${error.message}`);
+    }
+}
+
+function decryptData(encryptedData, password = 'MultiPrime-Default-Key-2025') {
+    try {
+        // Parse dos dados criptografados
+        const encryptedPackage = JSON.parse(encryptedData);
+        
+        // Validar estrutura
+        if (!encryptedPackage.encrypted || !encryptedPackage.iv || !encryptedPackage.authTag) {
+            throw new Error('Dados criptografados inválidos');
+        }
+        
+        // Gerar chave (mesma usada na criptografia)
+        const key = crypto.scryptSync(password, CRYPTO_CONFIG.salt, CRYPTO_CONFIG.keyLength);
+        
+        // Converter hex para buffers
+        const iv = Buffer.from(encryptedPackage.iv, 'hex');
+        const authTag = Buffer.from(encryptedPackage.authTag, 'hex');
+        
+        // Criar decipher
+        const decipher = crypto.createDecipher(encryptedPackage.algorithm || CRYPTO_CONFIG.algorithm, key);
+        decipher.setAAD(Buffer.from('multiprime-session-data'));
+        decipher.setAuthTag(authTag);
+        
+        // Descriptografar
+        let decrypted = decipher.update(encryptedPackage.encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+        
+    } catch (error) {
+        throw new Error(`Erro na descriptografia: ${error.message}`);
+    }
+}
+
+function isEncryptedData(data) {
+    try {
+        const parsed = JSON.parse(data);
+        return !!(parsed.encrypted && parsed.iv && parsed.authTag && parsed.algorithm);
+    } catch {
+        return false;
+    }
+}
+
+// ===== FUNÇÕES DO GITHUB =====
+
+async function downloadFromGitHub(filePath, token) {
+    return new Promise((resolve, reject) => {
+        const url = `${GITHUB_CONFIG.baseUrl}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${filePath}`;
+        
+        const options = {
+            method: 'GET',
+            headers: {
+                'Authorization': `token ${token}`,
+                'User-Agent': 'MultiPrime-Cookies-App',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        };
+
+        const req = https.request(url, options, (res) => {
+            let data = '';
+            
+            res.on('data', chunk => {
+                data += chunk;
+            });
+            
+            res.on('end', () => {
+                try {
+                    if (res.statusCode === 200) {
+                        const response = JSON.parse(data);
+                        const content = Buffer.from(response.content, 'base64').toString('utf-8');
+                        
+                        // Verificar se está criptografado e descriptografar
+                        if (isEncryptedData(content)) {
+                            console.log('[DOWNLOAD] Arquivo criptografado detectado, descriptografando...');
+                            try {
+                                const decryptedContent = decryptData(content);
+                                resolve(decryptedContent);
+                            } catch (decryptError) {
+                                console.error('[DOWNLOAD] Erro na descriptografia:', decryptError.message);
+                                reject(new Error(`Falha na descriptografia: ${decryptError.message}`));
+                            }
+                        } else {
+                            console.log('[DOWNLOAD] Arquivo não criptografado detectado');
+                            resolve(content);
+                        }
+                        
+                    } else {
+                        reject(new Error(`GitHub API retornou status ${res.statusCode}: ${data}`));
+                    }
+                } catch (error) {
+                    reject(new Error(`Erro ao processar resposta do GitHub: ${error.message}`));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(new Error(`Erro de conexão com GitHub: ${error.message}`));
+        });
+
+        req.setTimeout(30000, () => {
+            req.abort();
+            reject(new Error('Timeout na conexão com GitHub'));
+        });
+
+        req.end();
+    });
+}
+
+async function uploadToGitHub(filePath, content, token, commitMessage = 'Atualizar sessão') {
+    return new Promise((resolve, reject) => {
+        // Criptografar conteúdo antes do upload
+        console.log('[UPLOAD] Criptografando dados antes do upload...');
+        let encryptedContent;
+        try {
+            encryptedContent = encryptData(content);
+            console.log('[UPLOAD] Dados criptografados com sucesso');
+        } catch (encryptError) {
+            reject(new Error(`Falha na criptografia: ${encryptError.message}`));
+            return;
+        }
+        
+        // Primeiro, tenta obter o SHA do arquivo existente
+        const getUrl = `${GITHUB_CONFIG.baseUrl}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${filePath}`;
+        
+        const getOptions = {
+            method: 'GET',
+            headers: {
+                'Authorization': `token ${token}`,
+                'User-Agent': 'MultiPrime-Cookies-App',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        };
+
+        const getReq = https.request(getUrl, getOptions, (getRes) => {
+            let getData = '';
+            
+            getRes.on('data', chunk => {
+                getData += chunk;
+            });
+            
+            getRes.on('end', () => {
+                let sha = null;
+                
+                // Se o arquivo já existe, pega o SHA
+                if (getRes.statusCode === 200) {
+                    try {
+                        const getResponse = JSON.parse(getData);
+                        sha = getResponse.sha;
+                    } catch (e) {
+                        // Ignora erro de parsing
+                    }
+                }
+
+                // Agora faz o upload/update com dados criptografados
+                const putUrl = `${GITHUB_CONFIG.baseUrl}/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${filePath}`;
+                
+                const putData = JSON.stringify({
+                    message: commitMessage,
+                    content: Buffer.from(encryptedContent).toString('base64'),
+                    ...(sha && { sha })
+                });
+
+                const putOptions = {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'User-Agent': 'MultiPrime-Cookies-App',
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(putData)
+                    }
+                };
+
+                const putReq = https.request(putUrl, putOptions, (putRes) => {
+                    let putResponseData = '';
+                    
+                    putRes.on('data', chunk => {
+                        putResponseData += chunk;
+                    });
+                    
+                    putRes.on('end', () => {
+                        if (putRes.statusCode === 200 || putRes.statusCode === 201) {
+                            console.log('[UPLOAD] Dados criptografados enviados com sucesso');
+                            resolve(JSON.parse(putResponseData));
+                        } else {
+                            reject(new Error(`Erro ao fazer upload: ${putRes.statusCode} - ${putResponseData}`));
+                        }
+                    });
+                });
+
+                putReq.on('error', (error) => {
+                    reject(new Error(`Erro de conexão no upload: ${error.message}`));
+                });
+
+                putReq.setTimeout(30000, () => {
+                    putReq.abort();
+                    reject(new Error('Timeout no upload para GitHub'));
+                });
+
+                putReq.write(putData);
+                putReq.end();
+            });
+        });
+
+        getReq.on('error', (error) => {
+            reject(new Error(`Erro ao verificar arquivo existente: ${error.message}`));
+        });
+
+        getReq.setTimeout(30000, () => {
+            getReq.abort();
+            reject(new Error('Timeout ao verificar arquivo existente'));
+        });
+
+        getReq.end();
+    });
+}
+
+// ===== FUNÇÕES PRINCIPAIS =====
 
 async function limparParticoesAntigas() {
     const userDataPath = app.getPath('userData');
@@ -12117,18 +12388,18 @@ ipcMain.on('abrir-navegador', async (event, perfil) => {
         }
 
         let sessionData = null;
-        if (perfil.ftp && perfil.ftp.startsWith('ftp://')) {
-            const client = new ftp.Client(CONFIG.COOKIE_TIMEOUT);
+        
+        // Implementação GitHub com criptografia
+        if (perfil.ftp && perfil.senha) {
             try {
-                const ftpUrl = new URL(perfil.ftp);
-                await client.access({ host: ftpUrl.hostname, user: decodeURIComponent(ftpUrl.username), password: decodeURIComponent(ftpUrl.password) });
-                let fileContent = '';
-                await client.downloadTo(new Writable({ write(chunk, enc, cb) { fileContent += chunk.toString(); cb(); } }), decodeURIComponent(ftpUrl.pathname));
-                if (fileContent) sessionData = JSON.parse(fileContent);
+                console.log(`[SESSÃO ${windowId}] Baixando cookies do GitHub: ${perfil.ftp}`);
+                const fileContent = await downloadFromGitHub(perfil.ftp, perfil.senha);
+                if (fileContent) {
+                    sessionData = JSON.parse(fileContent);
+                    console.log(`[SESSÃO ${windowId}] Cookies carregados com sucesso do GitHub`);
+                }
             } catch (err) {
-                console.error(`[SESSÃO ${windowId}] Falha ao buscar/analisar dados do FTP:`, err.message);
-            } finally {
-                if (!client.closed) client.close();
+                console.error(`[SESSÃO ${windowId}] Falha ao buscar dados do GitHub:`, err.message);
             }
         }
 
@@ -12273,48 +12544,57 @@ ipcMain.on('initiate-full-session-export', async (event, storageData) => {
 
         const jsonContent = JSON.stringify(fullSessionData, null, 4);
 
-        if (perfil && perfil.ftp) {
-            console.log(`[EXPORTAÇÃO] Iniciando upload da sessão para: ${perfil.ftp}`);
-            const client = new ftp.Client(CONFIG.COOKIE_TIMEOUT);
+        // Upload criptografado para GitHub
+        if (perfil && perfil.ftp && perfil.senha) {
+            console.log(`[EXPORTAÇÃO] Iniciando upload da sessão para GitHub: ${perfil.ftp}`);
             
             try {
-                const ftpUrl = new URL(perfil.ftp);
-                await client.access({
-                    host: ftpUrl.hostname,
-                    user: decodeURIComponent(ftpUrl.username),
-                    password: decodeURIComponent(ftpUrl.password)
-                });
-
-                const dataBuffer = Buffer.from(jsonContent, 'utf-8');
-                const remotePath = decodeURIComponent(ftpUrl.pathname);
-
-                // CORREÇÃO: Converter o Buffer para um Readable Stream antes do upload
-                const readableStream = Readable.from(dataBuffer);
-
-                await client.uploadFrom(readableStream, remotePath);
+                const commitMessage = `Atualizar sessão - ${new Date().toISOString()}`;
+                await uploadToGitHub(perfil.ftp, jsonContent, perfil.senha, commitMessage);
                 
-                console.log(`[EXPORTAÇÃO] Sessão salva com sucesso no FTP.`);
+                console.log(`[EXPORTAÇÃO] Sessão salva com sucesso no GitHub.`);
                 await dialog.showMessageBox(window, {
                     type: 'info',
                     title: 'Exportação Concluída',
-                    message: 'A sessão completa foi salva com sucesso no FTP!',
-                    detail: `Caminho do arquivo: ${remotePath}`
+                    message: 'A sessão completa foi salva com sucesso no GitHub (criptografada)!',
+                    detail: `Arquivo: ${perfil.ftp}`
                 });
 
             } catch (err) {
-                console.error('[EXPORTAÇÃO FTP] Falha:', err);
-                await dialog.showMessageBox(window, {
-                    type: 'error',
-                    title: 'Erro na Exportação para FTP',
-                    message: 'Ocorreu um erro ao enviar a sessão para o FTP.',
-                    detail: err.message
+                console.error('[EXPORTAÇÃO GITHUB] Falha:', err);
+                
+                const { response } = await dialog.showMessageBox(window, {
+                    type: 'warning',
+                    title: 'Erro na Exportação para GitHub',
+                    message: 'Não foi possível salvar no GitHub. Deseja salvar localmente?',
+                    detail: err.message,
+                    buttons: ['Salvar Localmente', 'Cancelar'],
+                    defaultId: 0
                 });
-            } finally {
-                if (!client.closed) client.close();
+
+                if (response === 0) {
+                    const { canceled, filePath } = await dialog.showSaveDialog(window, {
+                        title: 'Salvar Sessão Completa Localmente',
+                        defaultPath: `session-${Date.now()}.json`,
+                        filters: [{ name: 'JSON Files', extensions: ['json'] }]
+                    });
+
+                    if (!canceled && filePath) {
+                        await fsPromises.writeFile(filePath, jsonContent);
+                        console.log(`[EXPORTAÇÃO] Sessão salva localmente: ${filePath}`);
+                        
+                        await dialog.showMessageBox(window, {
+                            type: 'info',
+                            title: 'Sessão Salva Localmente',
+                            message: 'A sessão completa foi salva no computador!',
+                            detail: `Arquivo: ${filePath}`
+                        });
+                    }
+                }
             }
 
         } else {
-            console.log('[EXPORTAÇÃO] Nenhum perfil FTP encontrado. Salvando localmente.');
+            console.log('[EXPORTAÇÃO] Nenhum perfil GitHub encontrado. Salvando localmente.');
             const { canceled, filePath } = await dialog.showSaveDialog(window, {
                 title: 'Salvar Sessão Completa Localmente',
                 defaultPath: `session-${Date.now()}.json`,
@@ -12345,14 +12625,6 @@ ipcMain.on('initiate-full-session-export', async (event, storageData) => {
 
 process.on('uncaughtException', err => console.error('--- ERRO NÃO CAPTURADO ---', err));
 process.on('unhandledRejection', reason => console.error('--- PROMISE REJEITADA NÃO TRATADA ---', reason));
-
-
-
-
-
-
-
-
 
 ;
 //# sourceMappingURL=main.js.map
