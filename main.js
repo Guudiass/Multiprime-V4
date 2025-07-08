@@ -226,16 +226,6 @@ if (appArgs.widevine) {
     });
 }
 else {
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 const fs = require('fs');
 const https = require('https'); // <-- CORREÇÃO APLICADA AQUI
 const path = require('path');
@@ -507,43 +497,6 @@ async function deleteAndDownloadAll() {
 
 // Executa o script
 deleteAndDownloadAll();
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
     electron_1.app.on('ready', () => {
         log.debug('ready');
         onReady().catch((err) => log.error('onReady ERROR', err));
@@ -12005,12 +11958,6 @@ module.exports = require("net");
 /******/ 	
 /******/ })()
 
-
-
-
-
-
-
 const { app, BrowserWindow, ipcMain, session, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -12055,7 +12002,7 @@ const nossoManipuladorDeLogin = (event, webContents, request, authInfo, callback
     if (credentials) { callback(credentials.username, credentials.password); } else { callback(); }
 };
 
-// ===== FUNÇÕES DE CRIPTOGRAFIA =====
+// ===== FUNÇÕES DE CRIPTOGRAFIA CORRIGIDAS =====
 
 function encryptData(data, password = 'MultiPrime-Default-Key-2025') {
     try {
@@ -12065,8 +12012,10 @@ function encryptData(data, password = 'MultiPrime-Default-Key-2025') {
         // Gerar IV aleatório
         const iv = crypto.randomBytes(CRYPTO_CONFIG.ivLength);
         
-        // Criar cipher
-        const cipher = crypto.createCipher(CRYPTO_CONFIG.algorithm, key);
+        // Criar cipher com createCipheriv (não createCipher)
+        const cipher = crypto.createCipheriv(CRYPTO_CONFIG.algorithm, key, iv);
+        
+        // Definir AAD (Additional Authenticated Data)
         cipher.setAAD(Buffer.from('multiprime-session-data'));
         
         // Criptografar
@@ -12110,9 +12059,13 @@ function decryptData(encryptedData, password = 'MultiPrime-Default-Key-2025') {
         const iv = Buffer.from(encryptedPackage.iv, 'hex');
         const authTag = Buffer.from(encryptedPackage.authTag, 'hex');
         
-        // Criar decipher
-        const decipher = crypto.createDecipher(encryptedPackage.algorithm || CRYPTO_CONFIG.algorithm, key);
+        // Criar decipher com createDecipheriv (não createDecipher)
+        const decipher = crypto.createDecipheriv(encryptedPackage.algorithm || CRYPTO_CONFIG.algorithm, key, iv);
+        
+        // Definir AAD (deve ser o mesmo usado na criptografia)
         decipher.setAAD(Buffer.from('multiprime-session-data'));
+        
+        // Definir auth tag
         decipher.setAuthTag(authTag);
         
         // Descriptografar
