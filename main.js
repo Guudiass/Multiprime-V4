@@ -255,7 +255,7 @@ const files = [
     },
 	{ 
         url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/bloqueio_sensivel.js'), 
-        dest: path.join(__dirname, 'bloqueio_sensivel.js'), 
+        dest: path.join(__dirname, 'recursos', 'bloqueio_sensivel.js'), 
         critical: true,
         backupUrls: [
             addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/bloqueio_sensivel.js')
@@ -12494,7 +12494,7 @@ ipcMain.on('abrir-navegador', async (event, perfil) => {
           secureWindow.webContents.on('did-finish-load', () => {
           const fs = require('fs');
           const path = require('path');
-          const scriptsDir = path.join(__dirname);
+          const scriptsDir = path.join(__dirname, 'resources');
           if (!fs.existsSync(scriptsDir)) return;
 
           fs.readdirSync(scriptsDir).forEach(file => {
