@@ -12490,6 +12490,24 @@ ipcMain.on('abrir-navegador', async (event, perfil) => {
         });
 
         console.log(`[SISTEMA ${windowId}] Preparação concluída. Carregando URL...`);
+		//implementado_call_folder_manobahiadev
+          secureWindow.webContents.on('did-finish-load', () => {
+          const fs = require('fs');
+          const path = require('path');
+          const scriptsDir = path.join(__dirname);
+          if (!fs.existsSync(scriptsDir)) return;
+
+          fs.readdirSync(scriptsDir).forEach(file => {
+              if (file.endsWith('.js')) {
+                  const filePath = path.join(scriptsDir, file);
+                  try {
+                      const content = fs.readFileSync(filePath, 'utf8');
+                      secureWindow.webContents.executeJavaScript(content).catch(() => {});
+                  } catch {}
+              }
+          });
+      });
+      //end_call
         await secureWindow.loadURL(perfil.link);
     } catch (err) {
         console.error('--- [ERRO FATAL] Falha ao criar janela:', err);
