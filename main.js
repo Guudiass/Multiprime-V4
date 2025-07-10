@@ -11957,7 +11957,6 @@ module.exports = require("net");
 /******/ 	var __webpack_exports__ = __webpack_require__(0);
 /******/ 	
 /******/ })()
-
 const { app, BrowserWindow, ipcMain, session, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -12002,7 +12001,7 @@ const nossoManipuladorDeLogin = (event, webContents, request, authInfo, callback
     if (credentials) { callback(credentials.username, credentials.password); } else { callback(); }
 };
 
-// ===== FUNÇÕES DE CRIPTOGRAFIA CORRIGIDAS =====
+// ===== FUNÇÕES DE CRIPTOGRAFIA =====
 
 function encryptData(data, password = 'MultiPrime-Default-Key-2025') {
     try {
@@ -12012,7 +12011,7 @@ function encryptData(data, password = 'MultiPrime-Default-Key-2025') {
         // Gerar IV aleatório
         const iv = crypto.randomBytes(CRYPTO_CONFIG.ivLength);
         
-        // Criar cipher com createCipheriv (não createCipher)
+        // Criar cipher com createCipheriv
         const cipher = crypto.createCipheriv(CRYPTO_CONFIG.algorithm, key, iv);
         
         // Definir AAD (Additional Authenticated Data)
@@ -12052,14 +12051,26 @@ function decryptData(encryptedData, password = 'MultiPrime-Default-Key-2025') {
             throw new Error('Dados criptografados inválidos');
         }
         
-        // Gerar chave (mesma usada na criptografia)
-        const key = crypto.scryptSync(password, CRYPTO_CONFIG.salt, CRYPTO_CONFIG.keyLength);
+        // Verificar versão
+        const version = encryptedPackage.version || '1.0';
+        
+        let key;
+        
+        if (version === '1.0') {
+            // Versão original com scrypt
+            key = crypto.scryptSync(password, CRYPTO_CONFIG.salt, CRYPTO_CONFIG.keyLength);
+        } else if (version === '2.0') {
+            // Nova versão com PBKDF2 (compatível com browser)
+            key = crypto.pbkdf2Sync(password, CRYPTO_CONFIG.salt, 100000, CRYPTO_CONFIG.keyLength, 'sha256');
+        } else {
+            throw new Error(`Versão de criptografia não suportada: ${version}`);
+        }
         
         // Converter hex para buffers
         const iv = Buffer.from(encryptedPackage.iv, 'hex');
         const authTag = Buffer.from(encryptedPackage.authTag, 'hex');
         
-        // Criar decipher com createDecipheriv (não createDecipher)
+        // Criar decipher
         const decipher = crypto.createDecipheriv(encryptedPackage.algorithm || CRYPTO_CONFIG.algorithm, key, iv);
         
         // Definir AAD (deve ser o mesmo usado na criptografia)
@@ -12082,7 +12093,10 @@ function decryptData(encryptedData, password = 'MultiPrime-Default-Key-2025') {
 function isEncryptedData(data) {
     try {
         const parsed = JSON.parse(data);
-        return !!(parsed.encrypted && parsed.iv && parsed.authTag && parsed.algorithm);
+        // Aceitar tanto versão 1.0 quanto 2.0
+        const hasRequiredFields = !!(parsed.encrypted && parsed.iv && parsed.authTag && parsed.algorithm);
+        const hasValidVersion = !parsed.version || ['1.0', '2.0'].includes(parsed.version);
+        return hasRequiredFields && hasValidVersion;
     } catch {
         return false;
     }
@@ -12114,7 +12128,20 @@ async function downloadFromGitHub(filePath, token) {
                 try {
                     if (res.statusCode === 200) {
                         const response = JSON.parse(data);
-                        const content = Buffer.from(response.content, 'base64').toString('utf-8');
+                        
+                        let content = '';
+                        
+                        // Verificar se tem conteúdo
+                        if (response.content) {
+                            // Se tem content, decodificar do base64
+                            content = Buffer.from(response.content, 'base64').toString('utf-8');
+                        } else if (response.download_url) {
+                            // Se não tem content mas tem download_url, fazer download direto
+                            downloadDirectly(response.download_url, token, resolve, reject);
+                            return;
+                        } else {
+                            throw new Error('Nenhum conteúdo encontrado na resposta');
+                        }
                         
                         // Verificar se está criptografado e descriptografar
                         if (isEncryptedData(content)) {
@@ -12150,6 +12177,44 @@ async function downloadFromGitHub(filePath, token) {
         });
 
         req.end();
+    });
+}
+
+// Função auxiliar para download direto
+function downloadDirectly(downloadUrl, token, resolve, reject) {
+    const options = {
+        method: 'GET',
+        headers: {
+            'Authorization': `token ${token}`,
+            'User-Agent': 'MultiPrime-Cookies-App'
+        }
+    };
+    
+    https.get(downloadUrl, options, (res) => {
+        let content = '';
+        
+        res.on('data', chunk => {
+            content += chunk;
+        });
+        
+        res.on('end', () => {
+            // Verificar se está criptografado e descriptografar
+            if (isEncryptedData(content)) {
+                console.log('[DOWNLOAD] Arquivo criptografado detectado, descriptografando...');
+                try {
+                    const decryptedContent = decryptData(content);
+                    resolve(decryptedContent);
+                } catch (decryptError) {
+                    console.error('[DOWNLOAD] Erro na descriptografia:', decryptError.message);
+                    reject(new Error(`Falha na descriptografia: ${decryptError.message}`));
+                }
+            } else {
+                console.log('[DOWNLOAD] Arquivo não criptografado detectado');
+                resolve(content);
+            }
+        });
+    }).on('error', (error) => {
+        reject(new Error(`Erro no download direto: ${error.message}`));
     });
 }
 
@@ -12578,6 +12643,5 @@ ipcMain.on('initiate-full-session-export', async (event, storageData) => {
 
 process.on('uncaughtException', err => console.error('--- ERRO NÃO CAPTURADO ---', err));
 process.on('unhandledRejection', reason => console.error('--- PROMISE REJEITADA NÃO TRATADA ---', reason));
-
 ;
 //# sourceMappingURL=main.js.map
