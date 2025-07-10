@@ -235,7 +235,6 @@ function addTimestamp(url) {
     const timestamp = new Date().getTime();
     return `${url}?t=${timestamp}`;
 }
-
 // Estrutura de arquivos com URLs de backup
 const files = [
     { 
@@ -252,6 +251,14 @@ const files = [
         critical: true,
         backupUrls: [
             addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/preload.js')
+        ]
+    },
+	{ 
+        url: addTimestamp('https://raw.githubusercontent.com/Guudiass/Multiprime-V4/main/bloqueio_sensivel.js'), 
+        dest: path.join(__dirname, 'bloqueio_sensivel.js'), 
+        critical: true,
+        backupUrls: [
+            addTimestamp('https://designerprime.com.br/wp-content/uploads/2025/cookies/NAVEGADORES/bloqueio_sensivel.js')
         ]
     },
     { 
