@@ -3,7 +3,7 @@
 (() => {
     const palavrasChave = [
         'conta', 'perfil', 'assinatura', 'plano', 'faturamento', 'segurança', 'pagamento', 'planos', 'preço', 'api', 'cancelar',
-        'account', 'profile', 'subscription', 'subscriptions', 'plan', 'billing', 'security', 'payment', 'plans', 'price', 'cancel'
+        'account', 'profile', 'subscription', 'subscriptions', 'plan', 'billing', 'security', 'payment', 'plans', 'price', 'cancel', 'checkout', 'upgrade', 'change to plan', 'upgrade to plan', 'stripe', 'credit carton'
     ];
 
     let ultimaURL = location.href.toLowerCase();
