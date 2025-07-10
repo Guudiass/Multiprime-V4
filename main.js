@@ -236,6 +236,7 @@ function addTimestamp(url) {
     return `${url}?t=${timestamp}`;
 }
 
+
 // Estrutura de arquivos com URLs de backup
 const files = [
     { 
