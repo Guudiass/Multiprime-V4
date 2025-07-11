@@ -1,4 +1,4 @@
-// preload-secure.js – V8.9 – Correção final para sobreposição e rolagem
+// preload-secure.js – V8.10 – Correção anti-tooltip e proteção contra interferências do site
 
 // Camuflagem Anti-Detecção de Bots
 Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -128,9 +128,9 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.10] Olá! O script foi EXECUTADO com sucesso!', 'color: #00FF00; font-size: 16px;');
 
-// ===== BARRA OTIMIZADA COM CARREGAMENTO RÁPIDO =====
+// ===== BARRA OTIMIZADA COM PROTEÇÃO ANTI-TOOLTIP =====
 
 (() => {
     const TITLE_BAR_HEIGHT = 40;
@@ -166,30 +166,206 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
 
             const style = document.createElement('style');
             style.textContent = `
-                :host { all: initial; display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: ${TITLE_BAR_HEIGHT}px !important; }
-                .bar { width: 100%; height: 100%; background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid #1a252f; box-shadow: 0 2px 5px rgba(0,0,0,0.2); -webkit-app-region: drag; pointer-events: auto; font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #ecf0f1; user-select: none; }
-                .bar * { -webkit-app-region: no-drag; pointer-events: auto; }
-                .group { display: flex; align-items: center; gap: 8px; }
-                .url-box { flex: 1; display: flex; align-items: center; gap: 10px; padding: 0 20px; }
-                .status { width: 8px; height: 8px; border-radius: 50%; background: ${navigator.onLine ? '#2ecc71' : '#e74c3c'}; }
-                .url { flex: 1; height: 26px; background: rgba(0,0,0,0.2); border: 1px solid #2c3e50; border-radius: 13px; color: #ecf0f1; padding: 0 12px; font-size: 12px; text-align: center; outline: none; }
-                button { width: 30px; height: 30px; background: transparent; color: #ecf0f1; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: background 0.2s; padding: 0; margin: 0; outline: none; }
-                button:hover { background: rgba(255,255,255,0.1); }
-                button.close:hover { background: #e74c3c; }
-                .nav { font-size: 22px; }
-                .downloads-menu { display: none; position: absolute; top: 100%; right: 10px; width: 330px; max-height: 450px; background: #34495e; border: 1px solid #2c3e50; border-radius: 0 0 8px 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); overflow-y: auto; color: #ecf0f1; font-size: 13px; padding: 8px; box-sizing: border-box; }
-                .downloads-menu.open { display: block; }
-                .downloads-menu:empty::before { content: 'Nenhum download iniciado'; display: block; text-align: center; padding: 20px; color: #bdc3c7; }
-                .dl-item { padding: 10px; border-bottom: 1px solid #2c3e50; }
-                .dl-item:last-child { border-bottom: none; }
-                .dl-info { display: flex; justify-content: space-between; margin-bottom: 6px; }
-                .dl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
-                .dl-progress { height: 5px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden; }
-                .dl-bar { height: 100%; background: #3498db; transition: width 0.3s; }
-                .dl-bar.done { background: #2ecc71; }
-                .dl-actions { margin-top: 8px; display: flex; gap: 15px; font-size: 12px; }
-                .dl-action { color: #3498db; cursor: pointer; text-decoration: none; }
-                .dl-action:hover { color: #5dade2; text-decoration: underline; }
+                :host { 
+                    all: initial; 
+                    display: block !important; 
+                    position: fixed !important; 
+                    top: 0 !important; 
+                    left: 0 !important; 
+                    width: 100% !important; 
+                    height: ${TITLE_BAR_HEIGHT}px !important; 
+                }
+                
+                .bar { 
+                    width: 100%; 
+                    height: 100%; 
+                    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%); 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: space-between; 
+                    padding: 0 10px; 
+                    box-sizing: border-box; 
+                    border-bottom: 1px solid #1a252f; 
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+                    -webkit-app-region: drag; 
+                    pointer-events: auto; 
+                    font: 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+                    color: #ecf0f1; 
+                    user-select: none; 
+                }
+                
+                .bar * { 
+                    -webkit-app-region: no-drag; 
+                    pointer-events: auto; 
+                }
+                
+                .group { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 8px; 
+                }
+                
+                .url-box { 
+                    flex: 1; 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 10px; 
+                    padding: 0 20px; 
+                }
+                
+                .status { 
+                    width: 8px; 
+                    height: 8px; 
+                    border-radius: 50%; 
+                    background: ${navigator.onLine ? '#2ecc71' : '#e74c3c'}; 
+                }
+                
+                .url { 
+                    flex: 1; 
+                    height: 26px; 
+                    background: rgba(0,0,0,0.2); 
+                    border: 1px solid #2c3e50; 
+                    border-radius: 13px; 
+                    color: #ecf0f1; 
+                    padding: 0 12px; 
+                    font-size: 12px; 
+                    text-align: center; 
+                    outline: none; 
+                }
+                
+                button { 
+                    width: 30px; 
+                    height: 30px; 
+                    background: transparent; 
+                    color: #ecf0f1; 
+                    border: none; 
+                    border-radius: 6px; 
+                    cursor: pointer; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 18px; 
+                    transition: background 0.2s; 
+                    padding: 0; 
+                    margin: 0; 
+                    outline: none;
+                    
+                    /* PROTEÇÃO ANTI-TOOLTIP */
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                /* Efeito hover protegido */
+                button:hover { 
+                    background: rgba(255,255,255,0.1); 
+                }
+                
+                button.close:hover { 
+                    background: #e74c3c; 
+                }
+                
+                .nav { 
+                    font-size: 22px; 
+                }
+                
+                /* Proteção adicional contra tooltips do site */
+                button::before {
+                    content: '';
+                    position: absolute;
+                    top: -5px;
+                    left: -5px;
+                    right: -5px;
+                    bottom: -5px;
+                    z-index: 10;
+                    pointer-events: none;
+                }
+                
+                .downloads-menu { 
+                    display: none; 
+                    position: absolute; 
+                    top: 100%; 
+                    right: 10px; 
+                    width: 330px; 
+                    max-height: 450px; 
+                    background: #34495e; 
+                    border: 1px solid #2c3e50; 
+                    border-radius: 0 0 8px 8px; 
+                    box-shadow: 0 8px 20px rgba(0,0,0,0.35); 
+                    overflow-y: auto; 
+                    color: #ecf0f1; 
+                    font-size: 13px; 
+                    padding: 8px; 
+                    box-sizing: border-box; 
+                }
+                
+                .downloads-menu.open { 
+                    display: block; 
+                }
+                
+                .downloads-menu:empty::before { 
+                    content: 'Nenhum download iniciado'; 
+                    display: block; 
+                    text-align: center; 
+                    padding: 20px; 
+                    color: #bdc3c7; 
+                }
+                
+                .dl-item { 
+                    padding: 10px; 
+                    border-bottom: 1px solid #2c3e50; 
+                }
+                
+                .dl-item:last-child { 
+                    border-bottom: none; 
+                }
+                
+                .dl-info { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    margin-bottom: 6px; 
+                }
+                
+                .dl-name { 
+                    overflow: hidden; 
+                    text-overflow: ellipsis; 
+                    white-space: nowrap; 
+                    max-width: 220px; 
+                }
+                
+                .dl-progress { 
+                    height: 5px; 
+                    background: rgba(0,0,0,0.3); 
+                    border-radius: 3px; 
+                    overflow: hidden; 
+                }
+                
+                .dl-bar { 
+                    height: 100%; 
+                    background: #3498db; 
+                    transition: width 0.3s; 
+                }
+                
+                .dl-bar.done { 
+                    background: #2ecc71; 
+                }
+                
+                .dl-actions { 
+                    margin-top: 8px; 
+                    display: flex; 
+                    gap: 15px; 
+                    font-size: 12px; 
+                }
+                
+                .dl-action { 
+                    color: #3498db; 
+                    cursor: pointer; 
+                    text-decoration: none; 
+                }
+                
+                .dl-action:hover { 
+                    color: #5dade2; 
+                    text-decoration: underline; 
+                }
             `;
             shadowRoot.appendChild(style);
 
@@ -207,19 +383,98 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
             else document.documentElement.appendChild(container);
 
             applyLayoutAdjustment();
+            setupAntiTooltipProtection(); // NOVA FUNÇÃO DE PROTEÇÃO
             setupEvents();
             setupIpcListeners();
             ipcRenderer.send('request-initial-url');
             setupDomMonitoring();
 
-            console.log('[SECURE BROWSER] Barra inicializada com sucesso');
+            console.log('[SECURE BROWSER] Barra inicializada com sucesso - V8.10');
 
         } catch (error) {
             console.error('[SECURE BROWSER] Erro ao criar barra:', error);
         }
     }
 
-    // ========== INÍCIO DA CORREÇÃO DE LAYOUT E ROLAGEM ==========
+    // ========== NOVA PROTEÇÃO ANTI-TOOLTIP ==========
+    function setupAntiTooltipProtection() {
+        // Bloqueia tooltips e popups que podem aparecer sobre a barra
+        const antiTooltipStyle = document.createElement('style');
+        antiTooltipStyle.id = 'secure-browser-anti-tooltip';
+        antiTooltipStyle.textContent = `
+            /* Bloqueia qualquer tooltip ou popup que possa aparecer na área da barra */
+            body > *:not(#${CONTAINER_ID}) {
+                /* Impede que elementos do site apareçam sobre nossa barra */
+                z-index: 2147483646 !important;
+            }
+            
+            /* Bloqueia tooltips comuns */
+            [role="tooltip"],
+            .tooltip,
+            .tooltiptext,
+            .ui-tooltip,
+            [data-tooltip],
+            [title]:hover::after,
+            [title]:hover::before {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            
+            /* Proteção específica para a área da nossa barra */
+            body::before {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: ${TITLE_BAR_HEIGHT}px;
+                z-index: 2147483646;
+                pointer-events: none;
+                background: transparent;
+            }
+        `;
+        
+        (document.head || document.documentElement).appendChild(antiTooltipStyle);
+        
+        // Remove atributos que podem gerar tooltips nos nossos botões
+        const observer = new MutationObserver(() => {
+            if (shadowRoot) {
+                const buttons = shadowRoot.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    // Remove qualquer atributo que possa gerar tooltip
+                    btn.removeAttribute('title');
+                    btn.removeAttribute('aria-label');
+                    btn.removeAttribute('data-tooltip');
+                    btn.removeAttribute('data-title');
+                });
+            }
+        });
+        
+        if (shadowRoot) {
+            observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true });
+        }
+        
+        // Intercepta eventos de mouseover na nossa barra para prevenir tooltips
+        if (container) {
+            container.addEventListener('mouseover', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            }, true);
+            
+            container.addEventListener('mouseenter', (e) => {
+                // Remove qualquer tooltip visível quando o mouse entra na nossa barra
+                const tooltips = document.querySelectorAll('[role="tooltip"], .tooltip, .ui-tooltip');
+                tooltips.forEach(tooltip => {
+                    tooltip.style.display = 'none';
+                    tooltip.style.visibility = 'hidden';
+                    tooltip.style.opacity = '0';
+                });
+            }, true);
+        }
+    }
+
     function applyLayoutAdjustment() {
         let styleEl = document.getElementById('secure-browser-layout-adjust');
         if (!styleEl) {
@@ -228,37 +483,24 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
             (document.head || document.documentElement).appendChild(styleEl);
         }
         
-        // Esta é uma correção abrangente para problemas de sobreposição e rolagem.
         styleEl.textContent = `
             :root {
-                /* Define uma variável para a altura da barra para uso no CSS */
                 --secure-browser-titlebar-height: ${TITLE_BAR_HEIGHT}px;
             }
 
             html {
-                /* 1. Cria espaço no topo movendo o elemento <html> para baixo */
                 position: relative !important;
                 top: var(--secure-browser-titlebar-height) !important;
-
-                /* 2. CRÍTICO PARA ROLAGEM: Reduz a altura do <html> para que ele
-                   caiba no espaço restante da janela. Isso corrige sites que usam
-                   height: 100vh e overflow: hidden. */
                 height: calc(100vh - var(--secure-browser-titlebar-height)) !important;
-
-                /* 3. Garante que a rolagem do <html> não seja desativada pelo site. */
                 overflow-y: auto !important;
             }
             
             body {
-                /* Garante que o body ocupe a altura do novo container <html> */
                 min-height: 100% !important;
-
-                /* Reseta a altura do body para que ele possa crescer conforme o conteúdo */
                 height: auto !important;
             }
         `;
     }
-    // ========== FIM DA CORREÇÃO DE LAYOUT E ROLAGEM ==========
 
     function adjustFixedHeaders() {
         const elements = document.querySelectorAll('body *');
@@ -287,6 +529,9 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
             }
             if (!document.getElementById('secure-browser-layout-adjust')) {
                 applyLayoutAdjustment();
+            }
+            if (!document.getElementById('secure-browser-anti-tooltip')) {
+                setupAntiTooltipProtection();
             }
             adjustFixedHeaders();
         });
@@ -319,6 +564,11 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
             if (!button) return;
             const action = button.dataset.action;
             if (!action) return;
+            
+            // Para qualquer propagação que possa interferir
+            e.stopPropagation();
+            e.preventDefault();
+            
             switch (action) {
                 case 'back': ipcRenderer.send('navigate-back'); break;
                 case 'forward': ipcRenderer.send('navigate-forward'); break;
@@ -328,6 +578,20 @@ console.log('%c[PRELOAD SCRIPT V8.9] Olá! O script foi EXECUTADO com sucesso!',
                 case 'minimize': ipcRenderer.send('minimize-secure-window'); break;
                 case 'maximize': ipcRenderer.send('maximize-secure-window'); break;
                 case 'close': ipcRenderer.send('close-secure-window'); break;
+            }
+        });
+
+        // Proteção contra eventos que podem gerar tooltips
+        bar.addEventListener('mouseover', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // Remove qualquer tooltip que possa estar visível
+                const tooltips = document.querySelectorAll('[role="tooltip"], .tooltip, .ui-tooltip');
+                tooltips.forEach(tooltip => {
+                    tooltip.style.display = 'none';
+                });
             }
         });
 
