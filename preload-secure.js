@@ -1,4 +1,4 @@
-// preload-secure.js – V8.10 – Correção anti-tooltip e proteção contra interferências do site
+// preload-secure.js – V8.14 – V8.10 + Exceção para Canva
 
 // Camuflagem Anti-Detecção de Bots
 Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -128,7 +128,7 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.10] Olá! O script foi EXECUTADO com sucesso!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.15] V8.10 + Exceção Canva & Leonardo!', 'color: #00FF00; font-size: 16px;');
 
 // ===== BARRA OTIMIZADA COM PROTEÇÃO ANTI-TOOLTIP =====
 
@@ -383,21 +383,50 @@ console.log('%c[PRELOAD SCRIPT V8.10] Olá! O script foi EXECUTADO com sucesso!'
             else document.documentElement.appendChild(container);
 
             applyLayoutAdjustment();
-            setupAntiTooltipProtection(); // NOVA FUNÇÃO DE PROTEÇÃO
+            setupAntiTooltipProtection(); // FUNÇÃO DE PROTEÇÃO COM EXCEÇÃO CANVA
             setupEvents();
             setupIpcListeners();
             ipcRenderer.send('request-initial-url');
             setupDomMonitoring();
 
-            console.log('[SECURE BROWSER] Barra inicializada com sucesso - V8.10');
+            console.log('[SECURE BROWSER] Barra inicializada - V8.15 (V8.10 + Exceção Canva & Leonardo)');
 
         } catch (error) {
             console.error('[SECURE BROWSER] Erro ao criar barra:', error);
         }
     }
 
-    // ========== NOVA PROTEÇÃO ANTI-TOOLTIP ==========
+    // ========== PROTEÇÃO ANTI-TOOLTIP COM EXCEÇÃO PARA CANVA E LEONARDO ==========
     function setupAntiTooltipProtection() {
+        // *** VERIFICA SE É CANVA OU LEONARDO ***
+        const isCanva = window.location.hostname.includes('canva.com');
+        const isLeonardo = window.location.hostname.includes('leonardo.ai');
+        
+        if (isCanva || isLeonardo) {
+            const siteName = isCanva ? 'Canva' : 'Leonardo.ai';
+            console.log(`[SECURE BROWSER] ${siteName} detectado - Tooltips liberados`);
+            
+            // No Canva/Leonardo, só remove atributos dos nossos botões, SEM bloquear tooltips do site
+            const observer = new MutationObserver(() => {
+                if (shadowRoot) {
+                    const buttons = shadowRoot.querySelectorAll('button');
+                    buttons.forEach(btn => {
+                        btn.removeAttribute('title');
+                        btn.removeAttribute('aria-label');
+                        btn.removeAttribute('data-tooltip');
+                        btn.removeAttribute('data-title');
+                    });
+                }
+            });
+            
+            if (shadowRoot) {
+                observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true });
+            }
+            return; // SAI SEM APLICAR BLOQUEIOS NO CANVA/LEONARDO
+        }
+        
+        // *** RESTO IGUAL À V8.10 PARA TODOS OS OUTROS SITES ***
+        
         // Bloqueia tooltips e popups que podem aparecer sobre a barra
         const antiTooltipStyle = document.createElement('style');
         antiTooltipStyle.id = 'secure-browser-anti-tooltip';
