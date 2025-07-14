@@ -128,7 +128,7 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.15] V8.10 + Exceção Canva & Leonardo!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.16] V8.10 + Exceções: Canva, Leonardo & Placeit!', 'color: #00FF00; font-size: 16px;');
 
 // ===== BARRA OTIMIZADA COM PROTEÇÃO ANTI-TOOLTIP =====
 
@@ -389,24 +389,29 @@ console.log('%c[PRELOAD SCRIPT V8.15] V8.10 + Exceção Canva & Leonardo!', 'col
             ipcRenderer.send('request-initial-url');
             setupDomMonitoring();
 
-            console.log('[SECURE BROWSER] Barra inicializada - V8.15 (V8.10 + Exceção Canva & Leonardo)');
+            console.log('[SECURE BROWSER] Barra inicializada - V8.16 (V8.10 + Exceções: Canva, Leonardo & Placeit)');
 
         } catch (error) {
             console.error('[SECURE BROWSER] Erro ao criar barra:', error);
         }
     }
 
-    // ========== PROTEÇÃO ANTI-TOOLTIP COM EXCEÇÃO PARA CANVA E LEONARDO ==========
+    // ========== PROTEÇÃO ANTI-TOOLTIP COM EXCEÇÕES PARA SITES ESPECÍFICOS ==========
     function setupAntiTooltipProtection() {
-        // *** VERIFICA SE É CANVA OU LEONARDO ***
+        // *** VERIFICA SE É UM DOS SITES COM EXCEÇÃO ***
         const isCanva = window.location.hostname.includes('canva.com');
         const isLeonardo = window.location.hostname.includes('leonardo.ai');
+        const isPlaceit = window.location.hostname.includes('placeit.net');
         
-        if (isCanva || isLeonardo) {
-            const siteName = isCanva ? 'Canva' : 'Leonardo.ai';
+        if (isCanva || isLeonardo || isPlaceit) {
+            let siteName = '';
+            if (isCanva) siteName = 'Canva';
+            else if (isLeonardo) siteName = 'Leonardo.ai';
+            else if (isPlaceit) siteName = 'placeit.net';
+            
             console.log(`[SECURE BROWSER] ${siteName} detectado - Tooltips liberados`);
             
-            // No Canva/Leonardo, só remove atributos dos nossos botões, SEM bloquear tooltips do site
+            // Nos sites com exceção, só remove atributos dos nossos botões, SEM bloquear tooltips do site
             const observer = new MutationObserver(() => {
                 if (shadowRoot) {
                     const buttons = shadowRoot.querySelectorAll('button');
@@ -422,7 +427,7 @@ console.log('%c[PRELOAD SCRIPT V8.15] V8.10 + Exceção Canva & Leonardo!', 'col
             if (shadowRoot) {
                 observer.observe(shadowRoot, { childList: true, subtree: true, attributes: true });
             }
-            return; // SAI SEM APLICAR BLOQUEIOS NO CANVA/LEONARDO
+            return; // SAI SEM APLICAR BLOQUEIOS NOS SITES COM EXCEÇÃO
         }
         
         // *** RESTO IGUAL À V8.10 PARA TODOS OS OUTROS SITES ***
