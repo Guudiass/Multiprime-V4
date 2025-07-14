@@ -128,7 +128,7 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.16] V8.10 + Exceções: Canva, Leonardo & Placeit!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.17] V8.10 + Exceções: Canva, Leonardo, Placeit & HailuoAI!', 'color: #00FF00; font-size: 16px;');
 
 // ===== BARRA OTIMIZADA COM PROTEÇÃO ANTI-TOOLTIP =====
 
@@ -389,7 +389,7 @@ console.log('%c[PRELOAD SCRIPT V8.16] V8.10 + Exceções: Canva, Leonardo & Plac
             ipcRenderer.send('request-initial-url');
             setupDomMonitoring();
 
-            console.log('[SECURE BROWSER] Barra inicializada - V8.16 (V8.10 + Exceções: Canva, Leonardo & Placeit)');
+            console.log('[SECURE BROWSER] Barra inicializada - V8.17 (V8.10 + Exceções: Canva, Leonardo, Placeit & HailuoAI)');
 
         } catch (error) {
             console.error('[SECURE BROWSER] Erro ao criar barra:', error);
@@ -402,12 +402,14 @@ console.log('%c[PRELOAD SCRIPT V8.16] V8.10 + Exceções: Canva, Leonardo & Plac
         const isCanva = window.location.hostname.includes('canva.com');
         const isLeonardo = window.location.hostname.includes('leonardo.ai');
         const isPlaceit = window.location.hostname.includes('placeit.net');
+        const isHailuo = window.location.hostname.includes('hailuoai.video');
         
-        if (isCanva || isLeonardo || isPlaceit) {
+        if (isCanva || isLeonardo || isPlaceit || isHailuo) {
             let siteName = '';
             if (isCanva) siteName = 'Canva';
-            else if (isLeonardo) siteName = 'Leonardo.ai';
+            else if (isLeonardo) siteName = 'leonardo.ai';
             else if (isPlaceit) siteName = 'placeit.net';
+            else if (isHailuo) siteName = 'hailuoai.video';
             
             console.log(`[SECURE BROWSER] ${siteName} detectado - Tooltips liberados`);
             
