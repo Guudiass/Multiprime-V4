@@ -128,7 +128,7 @@ async function importIndexedDB(dataToImport) {
     }
 }
 
-console.log('%c[PRELOAD SCRIPT V8.17] V8.10 + Exceções: Canva, Leonardo, Placeit & HailuoAI!', 'color: #00FF00; font-size: 16px;');
+console.log('%c[PRELOAD SCRIPT V8.18] V8.10 + Exceções: Canva, Leonardo, Placeit, HailuoAI & Vectorizer!', 'color: #00FF00; font-size: 16px;');
 
 // ===== BARRA OTIMIZADA COM PROTEÇÃO ANTI-TOOLTIP =====
 
@@ -389,7 +389,7 @@ console.log('%c[PRELOAD SCRIPT V8.17] V8.10 + Exceções: Canva, Leonardo, Place
             ipcRenderer.send('request-initial-url');
             setupDomMonitoring();
 
-            console.log('[SECURE BROWSER] Barra inicializada - V8.17 (V8.10 + Exceções: Canva, Leonardo, Placeit & HailuoAI)');
+            console.log('[SECURE BROWSER] Barra inicializada - V8.18 (V8.10 + Exceções: Canva, Leonardo, Placeit, HailuoAI & Vectorizer)');
 
         } catch (error) {
             console.error('[SECURE BROWSER] Erro ao criar barra:', error);
@@ -403,13 +403,15 @@ console.log('%c[PRELOAD SCRIPT V8.17] V8.10 + Exceções: Canva, Leonardo, Place
         const isLeonardo = window.location.hostname.includes('leonardo.ai');
         const isPlaceit = window.location.hostname.includes('placeit.net');
         const isHailuo = window.location.hostname.includes('hailuoai.video');
+        const isVectorizer = window.location.hostname.includes('vectorizer.ai');
         
-        if (isCanva || isLeonardo || isPlaceit || isHailuo) {
+        if (isCanva || isLeonardo || isPlaceit || isHailuo || isVectorizer) {
             let siteName = '';
             if (isCanva) siteName = 'Canva';
-            else if (isLeonardo) siteName = 'leonardo.ai';
-            else if (isPlaceit) siteName = 'placeit.net';
-            else if (isHailuo) siteName = 'hailuoai.video';
+            else if (isLeonardo) siteName = 'Leonardo.ai';
+            else if (isPlaceit) siteName = 'Placeit.net';
+            else if (isHailuo) siteName = 'HailuoAI Video';
+            else if (isVectorizer) siteName = 'Vectorizer.ai';
             
             console.log(`[SECURE BROWSER] ${siteName} detectado - Tooltips liberados`);
             
